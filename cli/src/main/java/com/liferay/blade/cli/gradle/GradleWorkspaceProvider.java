@@ -26,8 +26,9 @@ import com.liferay.blade.cli.util.BladeUtil;
 import com.liferay.blade.cli.util.ProductInfo;
 
 import java.io.File;
-import java.io.FilenameFilter;
 
+import java.io.FilenameFilter;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -43,15 +44,6 @@ public class GradleWorkspaceProvider implements WorkspaceProvider {
 
 	public static final Pattern patternDockerImageLiferayVersion = Pattern.compile(
 		".*(?<=liferay/(?:dxp|portal):)(.{3}).*", Pattern.DOTALL | Pattern.MULTILINE);
-	public static final Pattern patternWorkspacePlugin = Pattern.compile(
-		".*apply\\s*plugin\\s*:\\s*[\'\"]com\\.liferay\\.workspace[\'\"]\\s*$", Pattern.MULTILINE | Pattern.DOTALL);
-	public static final Pattern patternWorkspacePluginLatestRelease = Pattern.compile(
-		".*name:\\s*\"com\\.liferay\\.gradle\\.plugins\\.workspace\",\\s*version:" +
-			"\\s*\"([latest\\.release|latest\\.integration]+)\".*",
-		Pattern.MULTILINE | Pattern.DOTALL);
-	public static final Pattern patternWorkspacePluginVersion = Pattern.compile(
-		".*name:\\s*\"com\\.liferay\\.gradle\\.plugins\\.workspace\",\\s*version:\\s*\"([0-9\\.]+)\".*",
-		Pattern.MULTILINE | Pattern.DOTALL);
 
 	public File getGradleLocalPropertiesFile(File dir) {
 		return new File(getWorkspaceDir(dir), _GRADLE_LOCAL_PROPERTIES_FILE_NAME);
@@ -180,8 +172,10 @@ public class GradleWorkspaceProvider implements WorkspaceProvider {
 		return "portal";
 	}
 
-	public File getSettingGradleFile(File dir) {
-		return new File(getWorkspaceDir(dir), _SETTINGS_GRADLE_FILE_NAME);
+	public File getSettingGradleFile(File dir, GradleLanguage gradleLanguage) {
+		File workspaceRootDir = getWorkspaceDir(dir);
+
+		return new File(workspaceRootDir, gradleLanguage.getSettingsScriptFileName());
 	}
 
 	@Override
@@ -194,14 +188,20 @@ public class GradleWorkspaceProvider implements WorkspaceProvider {
 	@Override
 	public File getWorkspaceDir(File dir) {
 		File gradleParent = BladeUtil.findParentFile(
-			dir, new String[] {_SETTINGS_GRADLE_FILE_NAME, _GRADLE_PROPERTIES_FILE_NAME}, true);
+			dir, new String[] {
+				GradleLanguage.GROOVY.getSettingsScriptFileName(),
+				GradleLanguage.KOTLIN.getSettingsScriptFileName(),
+				_GRADLE_PROPERTIES_FILE_NAME },
+			true);
 
 		if ((gradleParent != null) && gradleParent.exists()) {
 			return gradleParent;
 		}
 
 		FilenameFilter gradleFilter =
-			(file, name) -> _SETTINGS_GRADLE_FILE_NAME.equals(name) || _GRADLE_PROPERTIES_FILE_NAME.equals(name);
+			(file, name) -> GradleLanguage.GROOVY.getSettingsScriptFileName().equals(name) ||
+				GradleLanguage.KOTLIN.getSettingsScriptFileName().equals(name) ||
+				_GRADLE_PROPERTIES_FILE_NAME.equals(name);
 
 		File[] matches = dir.listFiles(gradleFilter);
 
@@ -228,9 +228,15 @@ public class GradleWorkspaceProvider implements WorkspaceProvider {
 				return false;
 			}
 
-			String settingsGradleFileContent = BladeUtil.read(getSettingGradleFile(dir));
+			File workspaceRootDir = getWorkspaceDir(dir);
 
-			Matcher matcher = patternWorkspacePluginVersion.matcher(settingsGradleFileContent);
+			GradleLanguage gradleLanguage = GradleLanguage.detect(workspaceRootDir);
+
+			File settingScript = new File(workspaceRootDir, gradleLanguage.getSettingsScriptFileName());
+
+			String settingsScriptContent = BladeUtil.read(settingScript);
+
+			Matcher matcher = gradleLanguage.getPatternWorkspacePluginVersion().matcher(settingsScriptContent);
 
 			if (matcher.find()) {
 				Version minVersion = new Version(1, 9, 0);
@@ -244,7 +250,7 @@ public class GradleWorkspaceProvider implements WorkspaceProvider {
 				}
 			}
 			else {
-				matcher = patternWorkspacePluginLatestRelease.matcher(settingsGradleFileContent);
+				matcher = gradleLanguage.getPatternWorkspacePluginLatestRelease().matcher(settingsScriptContent);
 
 				return matcher.find();
 			}
@@ -263,7 +269,14 @@ public class GradleWorkspaceProvider implements WorkspaceProvider {
 			return false;
 		}
 
-		File gradleFile = new File(workspaceDir, _SETTINGS_GRADLE_FILE_NAME);
+		GradleLanguage gradleLanguage;
+		try {
+			gradleLanguage = GradleLanguage.detect(workspaceDir);
+		} catch (Exception e) {
+			return false;
+		}
+
+		File gradleFile = new File(workspaceDir, gradleLanguage.getSettingsScriptFileName());
 
 		if (!gradleFile.exists()) {
 			return false;
@@ -272,7 +285,7 @@ public class GradleWorkspaceProvider implements WorkspaceProvider {
 		try {
 			String script = BladeUtil.read(gradleFile);
 
-			Matcher matcher = patternWorkspacePlugin.matcher(script);
+			Matcher matcher = gradleLanguage.getPatternWorkspacePlugin().matcher(script);
 
 			if (matcher.find()) {
 				return true;
@@ -280,11 +293,11 @@ public class GradleWorkspaceProvider implements WorkspaceProvider {
 
 			//For workspace plugin < 1.0.5
 
-			gradleFile = new File(workspaceDir, _BUILD_GRADLE_FILE_NAME);
+			gradleFile = new File(workspaceDir, gradleLanguage.getBuildScriptFileName());
 
 			script = BladeUtil.read(gradleFile);
 
-			matcher = patternWorkspacePlugin.matcher(script);
+			matcher = gradleLanguage.getPatternWorkspacePlugin().matcher(script);
 
 			return matcher.find();
 		}
@@ -293,12 +306,8 @@ public class GradleWorkspaceProvider implements WorkspaceProvider {
 		}
 	}
 
-	private static final String _BUILD_GRADLE_FILE_NAME = "build.gradle";
-
 	private static final String _GRADLE_LOCAL_PROPERTIES_FILE_NAME = "gradle-local.properties";
 
 	private static final String _GRADLE_PROPERTIES_FILE_NAME = "gradle.properties";
-
-	private static final String _SETTINGS_GRADLE_FILE_NAME = "settings.gradle";
 
 }

@@ -50,6 +50,8 @@ public class WorkspaceProvideGradleTest {
 		GradleWorkspaceProvider workspaceProviderGradle = new GradleWorkspaceProvider();
 
 		Assert.assertTrue(workspaceProviderGradle.isWorkspace(workspace.toFile()));
+
+		Assert.assertEquals(GradleLanguage.GROOVY, GradleLanguage.detect(workspace.toFile()));
 	}
 
 	@Test
@@ -71,6 +73,8 @@ public class WorkspaceProvideGradleTest {
 		GradleWorkspaceProvider workspaceProviderGradle = new GradleWorkspaceProvider();
 
 		Assert.assertTrue(workspaceProviderGradle.isWorkspace(workspace.toFile()));
+
+		Assert.assertEquals(GradleLanguage.GROOVY, GradleLanguage.detect(workspace.toFile()));
 	}
 
 	@Test
@@ -96,6 +100,58 @@ public class WorkspaceProvideGradleTest {
 		GradleWorkspaceProvider workspaceProviderGradle = new GradleWorkspaceProvider();
 
 		Assert.assertTrue(workspaceProviderGradle.isWorkspace(workspace.toFile()));
+
+		Assert.assertEquals(GradleLanguage.GROOVY, GradleLanguage.detect(workspace.toFile()));
+	}
+
+	@Test
+	public void testIsWorkspace4_kotlin() throws Exception {
+		// assuming
+		File root = temporaryFolder.getRoot();
+
+		Path workspace = root.toPath();
+		workspace = workspace.resolve("workspace");
+		Files.createDirectories(workspace);
+
+		Path buildFile = workspace.resolve("build.gradle.kts");
+		String plugin = "\napply \n  ( \nplugin =   \n\"com.liferay.workspace\")";
+		Files.write(buildFile, plugin.getBytes());
+
+		Path settingsFile = workspace.resolve("settings.gradle.kts");
+		Files.createFile(settingsFile);
+
+		// when
+		GradleWorkspaceProvider workspaceProviderGradle = new GradleWorkspaceProvider();
+
+		// then
+		Assert.assertTrue(workspaceProviderGradle.isWorkspace(workspace.toFile()));
+
+		Assert.assertEquals(GradleLanguage.KOTLIN, GradleLanguage.detect(workspace.toFile()));
+	}
+
+	@Test
+	public void testIsWorkspace5_kotlin() throws Exception {
+		// assuming
+		File root = temporaryFolder.getRoot();
+
+		Path workspace = root.toPath();
+		workspace = workspace.resolve("workspace");
+		Files.createDirectories(workspace);
+
+		Path buildFile = workspace.resolve("build.gradle.kts");
+		Files.createFile(buildFile);
+
+		Path settingsFile = workspace.resolve("settings.gradle.kts");
+		String plugin = "\napply \n  ( \nplugin =   \n\"com.liferay.workspace\")";
+		Files.write(settingsFile, plugin.getBytes());
+
+		// when
+		GradleWorkspaceProvider workspaceProviderGradle = new GradleWorkspaceProvider();
+
+		// then
+		Assert.assertTrue(workspaceProviderGradle.isWorkspace(workspace.toFile()));
+
+		Assert.assertEquals(GradleLanguage.KOTLIN, GradleLanguage.detect(workspace.toFile()));
 	}
 
 	@Rule

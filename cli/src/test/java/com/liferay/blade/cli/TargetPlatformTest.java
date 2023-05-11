@@ -16,6 +16,7 @@
 
 package com.liferay.blade.cli;
 
+import com.liferay.blade.cli.gradle.GradleLanguage;
 import com.liferay.blade.cli.gradle.GradleWorkspaceProvider;
 import com.liferay.blade.cli.util.BladeUtil;
 
@@ -53,8 +54,11 @@ public class TargetPlatformTest {
 
 		GradleWorkspaceProvider workspaceProviderGradle = new GradleWorkspaceProvider();
 
+		// TODO test Kotlin as well
+		_gradleLanguage = GradleLanguage.GROOVY;
+
 		_gradlePropertiesFile = workspaceProviderGradle.getGradlePropertiesFile(_gradleWorkspaceDir);
-		_settingsGradleFile = workspaceProviderGradle.getSettingGradleFile(_gradleWorkspaceDir);
+		_settingsGradleFile = workspaceProviderGradle.getSettingGradleFile(_gradleWorkspaceDir, _gradleLanguage);
 	}
 
 	@Test
@@ -96,7 +100,7 @@ public class TargetPlatformTest {
 	private void _setWorkspacePluginVersion(String version) throws Exception {
 		String settingsScript = BladeUtil.read(_settingsGradleFile);
 
-		Matcher matcher = GradleWorkspaceProvider.patternWorkspacePluginVersion.matcher(settingsScript);
+		Matcher matcher = _gradleLanguage.getPatternWorkspacePluginVersion().matcher(settingsScript);
 
 		Assert.assertTrue(settingsScript, matcher.matches());
 
@@ -115,5 +119,6 @@ public class TargetPlatformTest {
 	private File _gradlePropertiesFile = null;
 	private File _gradleWorkspaceDir = null;
 	private File _settingsGradleFile = null;
+	private GradleLanguage _gradleLanguage = null;
 
 }

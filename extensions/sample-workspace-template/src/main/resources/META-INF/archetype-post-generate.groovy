@@ -16,8 +16,22 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
+// This script gets executed if the archetype si used from Maven => remove all Gradle-related files
+
 Path projectPath = Paths.get(request.outputDirectory, request.artifactId)
 
 Path buildGradlePath = projectPath.resolve("build.gradle")
+Path buildGradleKotlinPath = projectPath.resolve("build.gradle.kts")
+
+Path settingsGradlePath = projectPath.resolve("settings.gradle")
+Path settingsGradleKotlinPath = projectPath.resolve("settings.gradle.kts")
+
+Path propertiesPath = projectPath.resolve("gradle.properties")
+Path propertiesLocalPath = projectPath.resolve("gradle-local.properties")
 
 Files.deleteIfExists buildGradlePath
+Files.deleteIfExists buildGradleKotlinPath
+Files.deleteIfExists settingsGradlePath
+Files.deleteIfExists settingsGradleKotlinPath
+Files.deleteIfExists propertiesPath
+Files.deleteIfExists propertiesLocalPath
